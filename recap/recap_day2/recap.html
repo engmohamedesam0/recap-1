@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weather App</title>
+
+<style>
+
+body {
+  font-family: Arial;
+  background: #86a7c8;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+}
+
+.container {
+  background: rgb(14, 190, 161);
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  text-align: center;
+  width: 350px;
+}
+
+input {
+  padding: 10px;
+  width: 60%;
+  border: 1px solid #403394;
+  border-radius: 4px;
+}
+
+button {
+  padding: 10px;
+  border: none;
+  background: #0079c1;
+  color: rgb(255, 255, 255);
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 5px;
+}
+
+button:hover {
+  background: #033c5f;
+}
+
+.result {
+  margin-top: 20px;
+  display: none;
+}
+
+.temp {
+  font-size: 40px;
+  font-weight: bold;
+  color: #001927;
+}
+
+.loader {
+  border: 4px solid #b74d4d;
+  border-top: 4px solid #0079c1;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  animation: spin 1s linear infinite;
+  margin: 20px auto;
+  display: none;
+}
+
+.error {
+  color: red;
+  display: none;
+  margin-top: 10px;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <h2>Weather App</h2>
+
+  <input id="cityInput" placeholder="Enter City">
+  <br>
+  <button id="searchBtn">Search</button>
+  <button id="locationBtn">Use My Location</button>
+
+  <div id="loading" class="loader"></div>
+
+  <div id="error" class="error">City Not Found</div>
+
+  <div id="weatherBox" class="result">
+    <h3 id="city"></h3>
+    <img id="icon">
+    <div id="coords"></div>
+    <div class="temp" id="temp"></div>
+    <div id="condition"></div>
+    <div id="wind"></div>
+  </div>
+
+</div>
+
+<script>
+
+const apiKey = "27af757211f2bb2519ed407778d8d7f9"
+
+const input       = document.getElementById("cityInput")
+const searchBtn   = document.getElementById("searchBtn")
+const locationBtn = document.getElementById("locationBtn")
+const loading     = document.getElementById("loading")
+const errorDiv    = document.getElementById("error")
+const weatherBox  = document.getElementById("weatherBox")
+const cityText    = document.getElementById("city")
+const tempText    = document.getElementById("temp")
+const conditionText = document.getElementById("condition")
+const windText    = document.getElementById("wind")
+const coordsText  = document.getElementById("coords")
+const iconImg     = document.getElementById("icon")
+
+
+function showLoading() {
+  loading.style.display    = "block"
+  weatherBox.style.display = "none"
+  errorDiv.style.display   = "none"
+}
+
+function hideLoading() {
+  loading.style.display = "none"
+}
+
+function showError(msg) {
+  errorDiv.innerText     = msg || "City Not Found"
+  errorDiv.style.display = "block"
+}
+
+function showWeather(data) {
+  if (data.cod && data.cod !== 200) {
+    showError("City Not Found")
+    return
+  }
+
+  cityText.innerText    = data.name + " , " + data.sys.country
+  tempText.innerText    = data.main.temp + " °C"
+  conditionText.innerText = data.weather[0].main
+  windText.innerText    = "Wind : " + data.wind.speed + " m/s"
+  coordsText.innerText  = "Lat : " + data.coord.lat + " | Lon : " + data.coord.lon
+  iconImg.src           = "https://openweathermap.org/img/wn/" + data.weather[0].icon + "@2x.png"
+
+  weatherBox.style.display = "block"
+}
+
+
+async function getWeatherByCity(city) {
+  showLoading()
+
+  try {
+    let url      = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`
+    let response = await fetch(url)
+    let data     = await response.json()
+
+    if (!response.ok) {
+      showError("City Not Found")
+    } else {
+      showWeather(data)
+    }
+
+  } catch (err) {
+    console.error("City error:", err)
+    showError("Connection error. Please try again.")
+  }
+
+  hideLoading()
+}
+
+
+async function getWeatherByCoords(lat, lon) {
+  showLoading()
+
+  try {
+    let url      = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric`
+    let response = await fetch(url)
+    let data     = await response.json()
+
+    if (!response.ok) {
+      showError("Could not get weather for your location.")
+    } else {
+      showWeather(data)
+    }
+
+  } catch (err) {
+    console.error("Location error:", err)
+    showError("Connection error. Please try again.")
+  }
+
+  hideLoading()
+}
+
+
+searchBtn.addEventListener("click", () => {
+  let city = input.value.trim()
+  if (city !== "") {
+    getWeatherByCity(city)
+  }
+})
+
+locationBtn.addEventListener("click", () => {
+  if (!navigator.geolocation) {
+    showError("Geolocation is not supported by your browser.")
+    return
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      let lat = position.coords.latitude
+      let lon = position.coords.longitude
+      getWeatherByCoords(lat, lon)
+    },
+    (err) => {
+      console.error("Geolocation error:", err)
+      showError("Location permission denied.")
+    }
+  )
+})
+
+input.addEventListener("keypress", (e) => {
+  if (e.key === "Enter") {
+    searchBtn.click()
+  }
+})
+
+</script>
+
+</body>
+</html>
